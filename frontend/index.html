@@ -19,11 +19,19 @@
         width: 100vw;
         position: relative;
       }
-      .onboard {
+      .rooms-container {
         display: grid;
         justify-content: center;
         align-items: center;
         margin: auto;
+      }
+      #rooms {
+        display: grid;
+        gap: 5px;
+      }
+      .game-container {
+        padding: 10px 5px;
+        background-color: rgba(103, 103, 103, 0.47);
       }
       .lobby-chat-container {
         position: absolute;
@@ -46,7 +54,8 @@
       }
     </style>
     <div class="container">
-      <div class="onboard">
+      <div class="rooms-container">
+        <div id="rooms"></div>
         <input type="text" placeholder="nickname" id="nickname" />
         <button id="enter-button">enter</button>
       </div>
@@ -54,15 +63,18 @@
       <div class="lobby-chat-container">
         <div class="lobby-title">Lobby Chat</div>
         <div id="lobby-chat-messages"></div>
-        <input id="lobby-input" type="text" placeholder="chat here" />
+        <input id="lobby-input" type="text" placeholder="chat here" onkeydown="createGame(event)" />
       </div>
     </div>
     <script>
+      //Global states
+      const isInGame = false;
+
       //UI
       const enterBtn = document.getElementById('enter-button');
       enterBtn.addEventListener('click', async () => {
         const name = document.getElementById('nickname');
-        const resp = await fetch('http://0.0.0.0:8080/createRoom', {
+        const resp = await fetch('http://0.0.0.0:8080/createGame', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -70,13 +82,17 @@
           body: JSON.stringify({ name: name.value }),
         });
         const data = await resp.json();
+        if (!data.ok) {
+          alert('Maximum games allowed');
+          name.value = '';
+        }
       });
 
       //business logic
-      const appendToLobbyChat = (text, type) => {
+      const appendToLobbyChat = (text, type, id) => {
         const container = document.getElementById('lobby-chat-messages');
         const div = document.createElement('div');
-        div.innerText = text;
+        div.innerText = id ? `${id}: ${text}` : text;
         if (type === 1) {
           div.style.color = 'grey';
         }
@@ -87,8 +103,40 @@
       const lobbySocket = new WebSocket('ws://0.0.0.0:8080/ws/joinLobby');
       lobbySocket.addEventListener('message', event => {
         const data = JSON.parse(event.data);
-        appendToLobbyChat(data.content, data.type);
+        appendToLobbyChat(data.content, data.type, data.clientid);
       });
+
+      const createGame = event => {
+        if (event.code === 'Enter') {
+          const input = document.getElementById('lobby-input');
+          lobbySocket.send(input.value);
+          input.value = '';
+        }
+      };
+
+      //Fetching data
+      const getGames = async () => {
+        const resp = await fetch('http://0.0.0.0:8080/getGames');
+        const data = await resp.json();
+        const roomsDiv = document.getElementById('rooms');
+        roomsDiv.innerHTML = '';
+        data.forEach(game => {
+          console.log(game);
+          const div = document.createElement('div');
+          div.className = 'game-container';
+          const innerDiv = document.createElement('div');
+          innerDiv.innerText = 'Name: ' + game.name;
+          const playerNum = document.createElement('div');
+          playerNum.innerText = '# of Players: ' + game.numberOfPlayers;
+
+          div.append(innerDiv, playerNum);
+          roomsDiv.append(div);
+        });
+      };
+      getGames();
+      const gamesInterval = setInterval(async () => {
+        getGames();
+      }, 60 * 1000);
     </script>
   </body>
 </html>

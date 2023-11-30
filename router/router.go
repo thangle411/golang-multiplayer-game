@@ -31,8 +31,9 @@ func Init(wsHandler *ws.Handler) {
 			"status": "alive",
 		})
 	})
+	r.GET("/getGames", wsHandler.GetGames)
 	r.POST("/createUser")
-	r.POST("/createRoom", wsHandler.CreateRoom)
+	r.POST("/createGame", wsHandler.CreateGame)
 
 	r.GET("/ws/joinLobby", wsHandler.JoinLobby)
 	r.GET("/ws/joinGame/:gameID", wsHandler.JoinGame)

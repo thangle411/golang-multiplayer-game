@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/gorilla/websocket"
@@ -11,11 +10,8 @@ type Client struct {
 	id      uint64
 	message chan *Message
 	wsConn  *websocket.Conn
-}
-
-type Player struct {
-	Client
-	Name string
+	Name    string
+	InGame  bool
 }
 
 func NewClient(id uint64, ws *websocket.Conn) *Client {
@@ -23,12 +19,12 @@ func NewClient(id uint64, ws *websocket.Conn) *Client {
 		log.Fatal("ws cannot be nil")
 	}
 
-	return &Client{id, make(chan *Message, 5), ws}
+	return &Client{id, make(chan *Message, 5), ws, "", false}
 }
 
 func (client *Client) readMessageFrom(hub *Hub) {
 	defer func() {
-		hub.Lobby.Leave <- client
+		hub.Lobby.Disconnect <- client
 		client.wsConn.Close()
 	}()
 
@@ -40,7 +36,15 @@ func (client *Client) readMessageFrom(hub *Hub) {
 			}
 			break
 		}
-		fmt.Println("message from client", m)
+
+		if !client.InGame {
+			message := Message{
+				Content:  string(m),
+				Type:     2,
+				ClientID: client.id,
+			}
+			hub.Lobby.Chat <- &message
+		}
 	}
 }
 

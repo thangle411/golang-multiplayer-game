@@ -26,8 +26,16 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// --- /createRoom
-func (h *Handler) CreateRoom(c *gin.Context) {
+// --- /createGame
+func (h *Handler) CreateGame(c *gin.Context) {
+
+	if len(h.hub.GamesManager.Games) >= 5 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "Maximum amount of games reached",
+		})
+		return
+	}
+
 	type tmp struct {
 		Name string `json:"name"`
 	}
@@ -39,7 +47,38 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("New game being created: ", game)
+	newid := h.hub.GamesManager.LastID + 1
+	newRoom := Game{
+		Name:    game.Name,
+		ID:      newid,
+		Clients: make(map[string]*Client),
+	}
+	fmt.Println("New game being created: ", newRoom)
+
+	h.hub.GamesManager.LastID = newid
+	h.hub.GamesManager.Games[newid] = &newRoom
+
+	c.JSON(http.StatusOK, game)
+}
+
+// --- /getGames
+func (h *Handler) GetGames(c *gin.Context) {
+	type tmp struct {
+		Name            string `json:"name"`
+		ID              uint64 `json:"id"`
+		NumberOfPlayers int    `json:"numberOfPlayers"`
+	}
+	games := make([]tmp, 0)
+
+	for _, g := range h.hub.GamesManager.Games {
+		games = append(games, tmp{
+			Name:            g.Name,
+			ID:              g.ID,
+			NumberOfPlayers: len(g.Clients),
+		})
+	}
+
+	c.JSON(http.StatusOK, games)
 }
 
 // --- /ws/joinLobby
@@ -58,8 +97,9 @@ func (h *Handler) JoinLobby(c *gin.Context) {
 		Content: fmt.Sprintln("Random person ", newid, " joins the lobby"),
 		Type:    1,
 	}
-	h.hub.Lobby.Join <- client
+	h.hub.Lobby.Connect <- client
 	go client.writeMessageTo()
+	client.readMessageFrom(h.hub)
 }
 
 // --- /ws/joinGame/:gameID?clientID&clientName=name
