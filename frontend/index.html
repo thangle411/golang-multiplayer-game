@@ -6,8 +6,89 @@
     <title>Document</title>
   </head>
   <body>
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+        background: rgb(22, 22, 22);
+        color: white;
+      }
+      .container {
+        height: 100vh;
+        width: 100vw;
+        position: relative;
+      }
+      .onboard {
+        display: grid;
+        justify-content: center;
+        align-items: center;
+        margin: auto;
+      }
+      .lobby-chat-container {
+        position: absolute;
+        right: 1px;
+        bottom: 0;
+        padding: 10px;
+        background-color: rgba(87, 87, 87, 0.46);
+      }
+      .lobby-title {
+        padding: 0 0 5px;
+        font-weight: bold;
+      }
+      #lobby-chat-messages {
+        max-height: 150px;
+        overflow: auto;
+      }
+      #lobby-input {
+        margin-top: 10px;
+        width: 100%;
+      }
+    </style>
+    <div class="container">
+      <div class="onboard">
+        <input type="text" placeholder="nickname" id="nickname" />
+        <button id="enter-button">enter</button>
+      </div>
+
+      <div class="lobby-chat-container">
+        <div class="lobby-title">Lobby Chat</div>
+        <div id="lobby-chat-messages"></div>
+        <input id="lobby-input" type="text" placeholder="chat here" />
+      </div>
+    </div>
     <script>
-      const socket = new WebSocket('ws://0.0.0.0:8080/ws/joinGame/1');
+      //UI
+      const enterBtn = document.getElementById('enter-button');
+      enterBtn.addEventListener('click', async () => {
+        const name = document.getElementById('nickname');
+        const resp = await fetch('http://0.0.0.0:8080/createRoom', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: name.value }),
+        });
+        const data = await resp.json();
+      });
+
+      //business logic
+      const appendToLobbyChat = (text, type) => {
+        const container = document.getElementById('lobby-chat-messages');
+        const div = document.createElement('div');
+        div.innerText = text;
+        if (type === 1) {
+          div.style.color = 'grey';
+        }
+        container.appendChild(div);
+      };
+
+      //Websockets
+      const lobbySocket = new WebSocket('ws://0.0.0.0:8080/ws/joinLobby');
+      lobbySocket.addEventListener('message', event => {
+        const data = JSON.parse(event.data);
+        appendToLobbyChat(data.content, data.type);
+      });
     </script>
   </body>
 </html>
