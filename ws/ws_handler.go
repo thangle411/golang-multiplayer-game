@@ -51,7 +51,7 @@ func (h *Handler) CreateGame(c *gin.Context) {
 	newRoom := Game{
 		Name:    game.Name,
 		ID:      newid,
-		Clients: make(map[string]*Client),
+		Players: make(map[string]*Player),
 	}
 	fmt.Println("New game being created: ", newRoom)
 
@@ -68,13 +68,13 @@ func (h *Handler) GetGames(c *gin.Context) {
 		ID              uint64 `json:"id"`
 		NumberOfPlayers int    `json:"numberOfPlayers"`
 	}
-	games := make([]tmp, 0)
+	games := make([]tmp, len(h.hub.GamesManager.Games))
 
 	for _, g := range h.hub.GamesManager.Games {
 		games = append(games, tmp{
 			Name:            g.Name,
 			ID:              g.ID,
-			NumberOfPlayers: len(g.Clients),
+			NumberOfPlayers: len(g.Players),
 		})
 	}
 
@@ -89,17 +89,18 @@ func (h *Handler) JoinLobby(c *gin.Context) {
 		return
 	}
 
-	newid := h.hub.Lobby.LastID + 1
-	client := NewClient(newid, conn)
-	fmt.Println("New client joins lobby", client)
-	h.hub.Lobby.LastID = newid
+	current := h.hub.Lobby.LastID
+	player := NewPlayer(current, conn)
+	fmt.Println("New player joins lobby", player)
+	h.hub.Lobby.LastID = current + 1
 	h.hub.Lobby.Chat <- &Message{
-		Content: fmt.Sprintln("Random person ", newid, " joins the lobby"),
+		Content: fmt.Sprintln("Random person ", current, " joins the lobby"),
 		Type:    1,
 	}
-	h.hub.Lobby.Connect <- client
-	go client.writeMessageTo()
-	client.readMessageFrom(h.hub)
+	h.hub.Lobby.Connect <- player
+	go player.writeMessageTo()
+	go player.writeWorldStateTo()
+	player.readMessageFrom(h.hub)
 }
 
 // --- /ws/joinGame/:gameID?clientID&clientName=name

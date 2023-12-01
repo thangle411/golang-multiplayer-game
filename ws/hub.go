@@ -1,15 +1,17 @@
 package ws
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Message struct {
 	Content  string `json:"content"`
 	Type     int    `json:"type"` //1 for announcement, 2 for users' messages
-	ClientID uint64 `json:"clientid"`
+	PlayerID uint64 `json:"playerid"`
 }
 
-type UseMessage struct {
-	Content string `json:"content"`
+type WorldState struct {
+	State []PlayerState `json:"state"`
 }
 type GamesManager struct {
 	Games  map[uint64]*Game
@@ -19,14 +21,15 @@ type GamesManager struct {
 type Game struct {
 	Name    string             `json:"name"`
 	ID      uint64             `json:"id"`
-	Clients map[string]*Client `json:"clients"`
+	Players map[string]*Player `json:"players"`
 }
 
 type Lobby struct {
 	Chat       chan *Message
-	Connect    chan *Client
-	Disconnect chan *Client
-	Clients    map[uint64]*Client
+	WorldState chan []PlayerState
+	Connect    chan *Player
+	Disconnect chan *Player
+	Players    map[uint64]*Player
 	LastID     uint64
 }
 
@@ -42,27 +45,38 @@ func NewHub() *Hub {
 		},
 		Lobby: Lobby{
 			Chat:       make(chan *Message, 5),
-			Clients:    make(map[uint64]*Client),
-			Connect:    make(chan *Client),
-			Disconnect: make(chan *Client),
+			Players:    make(map[uint64]*Player),
+			Connect:    make(chan *Player),
+			Disconnect: make(chan *Player),
+			WorldState: make(chan []PlayerState),
 		},
 	}
 }
 
 func (h *Hub) Run() {
 	fmt.Println("Hub goroutine running...")
+
 	for {
 		select {
 		case globalM := <-h.Lobby.Chat:
-			for _, client := range h.Lobby.Clients {
-				client.message <- globalM
+			for _, player := range h.Lobby.Players {
+				player.message <- globalM
 			}
-		case client := <-h.Lobby.Connect:
-			h.Lobby.Clients[client.id] = client
-			fmt.Println("Added new client to lobby", h.Lobby.Clients)
-		case client := <-h.Lobby.Disconnect:
-			delete(h.Lobby.Clients, client.id)
-			fmt.Println("Deleted client from lobby", h.Lobby.Clients)
+		case worldState := <-h.WorldState:
+			for _, player := range h.Lobby.Players {
+				player.worldState <- &WorldState{State: worldState}
+			}
+		case player := <-h.Lobby.Connect:
+			h.Lobby.Players[player.ID] = player
+			player.message <- &Message{
+				Content:  "Welcome",
+				PlayerID: player.ID,
+			}
+			fmt.Println("Added new player to lobby", h.Lobby.Players)
+		case player := <-h.Lobby.Disconnect:
+			delete(h.Lobby.Players, player.ID)
+			fmt.Println("Deleted player from lobby", h.Lobby.Players)
 		}
 	}
+
 }
