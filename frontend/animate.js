@@ -1,14 +1,11 @@
 const Application = PIXI.Application;
 const Container = PIXI.Container;
 const Graphics = PIXI.Graphics;
+const Text = PIXI.Text;
 const app = new Application({
   width: window.innerWidth,
   height: window.innerHeight,
   transparent: false,
-});
-const container = new Container({
-  width: app.view.width,
-  height: app.view.height,
 });
 const center = {
   x: app.view.width / 2,
@@ -17,13 +14,24 @@ const center = {
 document.body.appendChild(app.view);
 app.ticker.add(gameLoop);
 
+//start button
+const startButton = new PIXI.Text('Start!', {
+  fontFamily: 'Arial',
+  fontSize: 12,
+  fill: 0xffffff,
+});
+startButton.anchor.set(0.5);
+startButton.position.set(center.x, 10);
+app.stage.addChild(startButton);
+
 let globalPlayers = {};
+let globalSquares = {};
 
 window.EventBus.subscribe(window.EventBus.eventNames['sync'], data => {
   // this is syncing with states from server
-  const { state } = data;
-  if (!state) return;
-  state.forEach(p => {
+  const { worldState } = data;
+  if (!worldState) return;
+  worldState.forEach(p => {
     const { state, id } = p;
     //If player doesn't exist, then we add to the array
     if (!globalPlayers[id]) {
@@ -34,8 +42,8 @@ window.EventBus.subscribe(window.EventBus.eventNames['sync'], data => {
       app.stage.addChild(player);
       globalPlayers[id] = player;
     } else {
-      globalPlayers[id].position.x = p.state.Point.x;
-      globalPlayers[id].position.y = p.state.Point.y;
+      globalPlayers[id].position.x = (center.x / 400) * p.state.Point.x;
+      globalPlayers[id].position.y = (center.y / 400) * p.state.Point.y;
     }
   });
 });
@@ -45,24 +53,46 @@ window.EventBus.subscribe(window.EventBus.eventNames['removePlayer'], data => {
   delete globalPlayers[data.playerid];
 });
 
+function renderSquares(squares) {
+  squares?.forEach(s => {
+    const { point, id } = s;
+    if (!globalSquares[id]) {
+      globalSquares[id] = s;
+      const square = new Graphics();
+      square.beginFill('#FFBF00').drawRect(center.x, center.y, 20, 20).endFill();
+      square.x = (center.x / 400) * point.x;
+      square.y = (center.y / 400) * point.y;
+      app.stage.addChildAt(square, 1);
+    }
+  });
+}
+
 function gameLoop() {
+  if (window.Store.gameState.level != 0) {
+    app.stage.removeChild(startButton);
+    renderSquares(window.Store.gameState.squares);
+  } else {
+    app.stage.addChild(startButton);
+  }
   Object.keys(globalPlayers).forEach(key => {
     const p = globalPlayers[key];
+    const ratioX = center.x / 400;
+    const ratioY = center.y / 400;
     if (Number(key) !== Number(window.Store.playerid)) return;
     if (window.Store.input['ArrowUp']) {
-      p.y -= 1;
+      p.y -= ratioY;
       lobbySocket.send(JSON.stringify({ key: 'arrow-up' }));
     }
     if (window.Store.input['ArrowDown']) {
-      p.y += 1;
+      p.y += ratioY;
       lobbySocket.send(JSON.stringify({ key: 'arrow-down' }));
     }
     if (window.Store.input['ArrowLeft']) {
-      p.x -= 1;
+      p.x -= ratioX;
       lobbySocket.send(JSON.stringify({ key: 'arrow-left' }));
     }
     if (window.Store.input['ArrowRight']) {
-      p.x += 1;
+      p.x += ratioX;
       lobbySocket.send(JSON.stringify({ key: 'arrow-right' }));
     }
   });

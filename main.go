@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	hub := ws.NewHub()
+	hub := game.NewHub()
 	game := game.NewGame(hub)
 	wsHandler := ws.NewHandler(hub)
 	go hub.Run()

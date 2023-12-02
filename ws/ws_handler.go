@@ -3,16 +3,17 @@ package ws
 import (
 	"fmt"
 	"net/http"
+	"server/game"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
 type Handler struct {
-	hub *Hub
+	hub *game.Hub
 }
 
-func NewHandler(hub *Hub) *Handler {
+func NewHandler(hub *game.Hub) *Handler {
 	return &Handler{
 		hub,
 	}
@@ -26,61 +27,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// --- /createGame
-func (h *Handler) CreateGame(c *gin.Context) {
-
-	if len(h.hub.GamesManager.Games) >= 5 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "Maximum amount of games reached",
-		})
-		return
-	}
-
-	type tmp struct {
-		Name string `json:"name"`
-	}
-	var game tmp
-	if err := c.ShouldBindJSON(&game); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	newid := h.hub.GamesManager.LastID + 1
-	newRoom := Game{
-		Name:    game.Name,
-		ID:      newid,
-		Players: make(map[string]*Player),
-	}
-	fmt.Println("New game being created: ", newRoom)
-
-	h.hub.GamesManager.LastID = newid
-	h.hub.GamesManager.Games[newid] = &newRoom
-
-	c.JSON(http.StatusOK, game)
-}
-
-// --- /getGames
-func (h *Handler) GetGames(c *gin.Context) {
-	type tmp struct {
-		Name            string `json:"name"`
-		ID              uint64 `json:"id"`
-		NumberOfPlayers int    `json:"numberOfPlayers"`
-	}
-	games := make([]tmp, len(h.hub.GamesManager.Games))
-
-	for _, g := range h.hub.GamesManager.Games {
-		games = append(games, tmp{
-			Name:            g.Name,
-			ID:              g.ID,
-			NumberOfPlayers: len(g.Players),
-		})
-	}
-
-	c.JSON(http.StatusOK, games)
-}
-
 // --- /ws/joinLobby
 func (h *Handler) JoinLobby(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -90,17 +36,17 @@ func (h *Handler) JoinLobby(c *gin.Context) {
 	}
 
 	current := h.hub.Lobby.LastID
-	player := NewPlayer(current, conn)
+	player := game.NewPlayer(current, conn)
 	fmt.Println("New player joins lobby", player)
 	h.hub.Lobby.LastID = current + 1
-	h.hub.Lobby.Chat <- &Message{
+	h.hub.Lobby.Chat <- &game.Message{
 		Content: fmt.Sprintln("Random person ", current, " joins the lobby"),
 		Type:    1,
 	}
 	h.hub.Lobby.Connect <- player
-	go player.writeMessageTo()
-	go player.writeWorldStateTo()
-	player.readMessageFrom(h.hub)
+	go player.WriteMessageTo()
+	go player.WriteWorldStateTo()
+	player.ReadMessageFrom(h.hub)
 }
 
 // --- /ws/joinGame/:gameID?clientID&clientName=name

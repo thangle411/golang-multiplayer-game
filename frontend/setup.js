@@ -31,6 +31,7 @@ class Store {
     this.world = {
       players: [],
     };
+    this.gameState = {};
     this.input = {
       ArrowUp: false,
       ArrowDown: false,

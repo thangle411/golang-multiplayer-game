@@ -1,8 +1,8 @@
 package point
 
 type Point struct {
-	X int32 `json:"x"`
-	Y int32 `json:"y"`
+	X int `json:"x"`
+	Y int `json:"y"`
 }
 
 func NewPoint() *Point {

@@ -3,9 +3,10 @@ const lobbySocket = new WebSocket('ws://0.0.0.0:8080/ws/joinLobby');
 window.lobbySocket = lobbySocket;
 lobbySocket.addEventListener('message', event => {
   const data = JSON.parse(event.data);
+  // console.log(data);
   if (data.content) {
     handleNonStateUpdate(data);
-  } else if (data.state) {
+  } else if (data.worldState && data.gameState) {
     handleWorldState(data);
   }
 });
@@ -21,7 +22,8 @@ const handleNonStateUpdate = data => {
 };
 
 const handleWorldState = data => {
-  window.Store.world.players = data.state;
+  window.Store.world.players = data.worldState;
+  window.Store.gameState = data.gameState;
   window.EventBus.dispatch(window.EventBus.eventNames['sync'], data);
 };
 
