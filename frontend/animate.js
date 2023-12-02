@@ -1,9 +1,14 @@
 const Application = PIXI.Application;
+const Container = PIXI.Container;
 const Graphics = PIXI.Graphics;
 const app = new Application({
   width: window.innerWidth,
   height: window.innerHeight,
   transparent: false,
+});
+const container = new Container({
+  width: app.view.width,
+  height: app.view.height,
 });
 const center = {
   x: app.view.width / 2,
@@ -12,45 +17,53 @@ const center = {
 document.body.appendChild(app.view);
 app.ticker.add(gameLoop);
 
-let globalPlayers = [];
+let globalPlayers = {};
 
-window.EventBus.subscribe(window.EventBus.events['sync'], data => {
-  //this is syncing with states from server
+window.EventBus.subscribe(window.EventBus.eventNames['sync'], data => {
+  // this is syncing with states from server
   const { state } = data;
-  globalPlayers = [];
-  app.stage.removeChildren();
+  if (!state) return;
   state.forEach(p => {
-    const { state } = p;
-    const player = new Graphics();
-    player
-      .beginFill(getRandomColor())
-      .drawRect(center.x + state.Point.x * 1, center.y + state.Point.y * 1, 10, 10)
-      .endFill();
-    app.stage.addChild(player);
-    globalPlayers.push({ player, id: p.id });
+    const { state, id } = p;
+    //If player doesn't exist, then we add to the array
+    if (!globalPlayers[id]) {
+      const player = new Graphics();
+      player.beginFill(getRandomColor()).drawRect(center.x, center.y, 10, 10).endFill();
+      player.x = state.Point.x;
+      player.y = state.Point.y;
+      app.stage.addChild(player);
+      globalPlayers[id] = player;
+    } else {
+      globalPlayers[id].position.x = p.state.Point.x;
+      globalPlayers[id].position.y = p.state.Point.y;
+    }
   });
 });
 
+window.EventBus.subscribe(window.EventBus.eventNames['removePlayer'], data => {
+  app.stage.removeChild(globalPlayers[data.playerid]);
+  delete globalPlayers[data.playerid];
+});
+
 function gameLoop() {
-  globalPlayers.forEach(p => {
-    if (p.id !== window.Store.playerid) return;
-    switch (window.Store.currentInput) {
-      case 'ArrowUp':
-        p.player.y -= 1;
-        lobbySocket.send(JSON.stringify({ key: 'arrow-up' }));
-        break;
-      case 'ArrowDown':
-        p.player.y += 1;
-        lobbySocket.send(JSON.stringify({ key: 'arrow-down' }));
-        break;
-      case 'ArrowLeft':
-        p.player.x -= 1;
-        lobbySocket.send(JSON.stringify({ key: 'arrow-left' }));
-        break;
-      case 'ArrowRight':
-        p.player.x += 1;
-        lobbySocket.send(JSON.stringify({ key: 'arrow-right' }));
-        break;
+  Object.keys(globalPlayers).forEach(key => {
+    const p = globalPlayers[key];
+    if (Number(key) !== Number(window.Store.playerid)) return;
+    if (window.Store.input['ArrowUp']) {
+      p.y -= 1;
+      lobbySocket.send(JSON.stringify({ key: 'arrow-up' }));
+    }
+    if (window.Store.input['ArrowDown']) {
+      p.y += 1;
+      lobbySocket.send(JSON.stringify({ key: 'arrow-down' }));
+    }
+    if (window.Store.input['ArrowLeft']) {
+      p.x -= 1;
+      lobbySocket.send(JSON.stringify({ key: 'arrow-left' }));
+    }
+    if (window.Store.input['ArrowRight']) {
+      p.x += 1;
+      lobbySocket.send(JSON.stringify({ key: 'arrow-right' }));
     }
   });
 }

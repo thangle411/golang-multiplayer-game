@@ -75,8 +75,17 @@ func (h *Hub) Run() {
 			fmt.Println("Added new player to lobby", h.Lobby.Players)
 		case player := <-h.Lobby.Disconnect:
 			delete(h.Lobby.Players, player.ID)
+			h.SendToAllPlayer(&Message{
+				Content:  "Disconnect",
+				PlayerID: player.ID,
+			})
 			fmt.Println("Deleted player from lobby", h.Lobby.Players)
 		}
 	}
+}
 
+func (h *Hub) SendToAllPlayer(m *Message) {
+	for _, p := range h.Players {
+		p.message <- m
+	}
 }

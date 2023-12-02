@@ -4,19 +4,25 @@ window.lobbySocket = lobbySocket;
 lobbySocket.addEventListener('message', event => {
   const data = JSON.parse(event.data);
   if (data.content) {
-    if (data.content === 'Welcome') {
-      window.Store.playerid = data.playerid;
-    } else {
-      appendToLobbyChat(data.content, data.type, data.playerid);
-    }
+    handleNonStateUpdate(data);
   } else if (data.state) {
     handleWorldState(data);
   }
 });
 
+const handleNonStateUpdate = data => {
+  if (data.content === 'Welcome') {
+    window.Store.playerid = data.playerid;
+  } else if (data.content === 'Disconnect') {
+    window.EventBus.dispatch(window.EventBus.eventNames['removePlayer'], data);
+  } else {
+    appendToLobbyChat(data.content, data.type, data.playerid);
+  }
+};
+
 const handleWorldState = data => {
   window.Store.world.players = data.state;
-  window.EventBus.dispatch(window.EventBus.events['sync'], data);
+  window.EventBus.dispatch(window.EventBus.eventNames['sync'], data);
 };
 
 const chat = event => {

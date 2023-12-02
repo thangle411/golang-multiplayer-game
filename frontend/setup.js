@@ -1,15 +1,15 @@
 class EventBus {
-  events = {
-    sync: 'sync',
-  };
   constructor() {
     this.events = {};
+    this.eventNames = {
+      sync: 'sync',
+      removePlayer: 'removePlayer',
+    };
   }
 
   dispatch(eventName, data) {
     const cbs = this.events[eventName];
     if (!cbs) return;
-
     for (let cb of cbs) {
       cb(data);
     }
@@ -31,7 +31,12 @@ class Store {
     this.world = {
       players: [],
     };
-    this.currentInput = null;
+    this.input = {
+      ArrowUp: false,
+      ArrowDown: false,
+      ArrowLeft: false,
+      ArrowRight: false,
+    };
     this.playerid = 0;
   }
 }
@@ -41,9 +46,9 @@ window.Store = store;
 
 //input handlers
 addEventListener('keydown', e => {
-  window.Store.currentInput = e.key;
+  window.Store.input[e.key] = true;
 });
 
 addEventListener('keyup', e => {
-  window.Store.currentInput = null;
+  window.Store.input[e.key] = false;
 });
