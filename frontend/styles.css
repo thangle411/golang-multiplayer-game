@@ -24,6 +24,13 @@ body {
   padding: 10px 5px;
   background-color: rgba(103, 103, 103, 0.47);
 }
+.game-buttons {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  opacity: 0.25;
+}
 .lobby-chat-container {
   position: absolute;
   right: 1px;

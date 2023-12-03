@@ -14,16 +14,6 @@ const center = {
 document.body.appendChild(app.view);
 app.ticker.add(gameLoop);
 
-//start button
-const startButton = new PIXI.Text('Start!', {
-  fontFamily: 'Arial',
-  fontSize: 12,
-  fill: 0xffffff,
-});
-startButton.anchor.set(0.5);
-startButton.position.set(center.x, 10);
-app.stage.addChild(startButton);
-
 let globalPlayers = {};
 let globalSquares = {};
 
@@ -56,43 +46,52 @@ window.EventBus.subscribe(window.EventBus.eventNames['removePlayer'], data => {
 function renderSquares(squares) {
   squares?.forEach(s => {
     const { point, id } = s;
-    if (!globalSquares[id]) {
-      globalSquares[id] = s;
+    const currentSquare = globalSquares[id];
+    if (!currentSquare || currentSquare?.x != point.x || currentSquare?.y != point.y) {
+      app.stage.removeChild(currentSquare);
       const square = new Graphics();
       square.beginFill('#FFBF00').drawRect(center.x, center.y, 20, 20).endFill();
       square.x = (center.x / 400) * point.x;
       square.y = (center.y / 400) * point.y;
+      globalSquares[id] = square;
       app.stage.addChildAt(square, 1);
     }
   });
 }
 
+function removeSquares() {
+  Object.keys(globalSquares).forEach(key => {
+    app.stage.removeChild(globalSquares[key]);
+  });
+  globalSquares = {};
+}
+
 function gameLoop() {
-  if (window.Store.gameState.level != 0) {
-    app.stage.removeChild(startButton);
+  if (window.Store.gameState.squares?.length > 0) {
     renderSquares(window.Store.gameState.squares);
   } else {
-    app.stage.addChild(startButton);
+    removeSquares();
   }
+
   Object.keys(globalPlayers).forEach(key => {
     const p = globalPlayers[key];
     const ratioX = center.x / 400;
     const ratioY = center.y / 400;
     if (Number(key) !== Number(window.Store.playerid)) return;
     if (window.Store.input['ArrowUp']) {
-      p.y -= ratioY;
+      p.y -= ratioY * 3;
       lobbySocket.send(JSON.stringify({ key: 'arrow-up' }));
     }
     if (window.Store.input['ArrowDown']) {
-      p.y += ratioY;
+      p.y += ratioY * 3;
       lobbySocket.send(JSON.stringify({ key: 'arrow-down' }));
     }
     if (window.Store.input['ArrowLeft']) {
-      p.x -= ratioX;
+      p.x -= ratioX * 3;
       lobbySocket.send(JSON.stringify({ key: 'arrow-left' }));
     }
     if (window.Store.input['ArrowRight']) {
-      p.x += ratioX;
+      p.x += ratioX * 3;
       lobbySocket.send(JSON.stringify({ key: 'arrow-right' }));
     }
   });

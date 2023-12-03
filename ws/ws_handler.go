@@ -10,12 +10,14 @@ import (
 )
 
 type Handler struct {
-	hub *game.Hub
+	hub  *game.Hub
+	game *game.Game
 }
 
-func NewHandler(hub *game.Hub) *Handler {
+func NewHandler(hub *game.Hub, game *game.Game) *Handler {
 	return &Handler{
 		hub,
+		game,
 	}
 }
 
@@ -25,6 +27,26 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
+}
+
+// --- /startGame
+func (h *Handler) StartGame(c *gin.Context) {
+	err := h.game.StartGame()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Game started"})
+}
+
+// --- /endGame
+func (h *Handler) EndGame(c *gin.Context) {
+	err := h.game.EndGame()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Game ended"})
 }
 
 // --- /ws/joinLobby

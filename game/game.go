@@ -1,7 +1,9 @@
 package game
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"server/game/point"
 	"server/game/utils"
 	"time"
@@ -9,7 +11,7 @@ import (
 
 type Game struct {
 	Hub              *Hub
-	isGameInProgress bool
+	IsGameInProgress bool
 	Round            Round
 }
 
@@ -26,18 +28,13 @@ type Round struct {
 func NewGame(hub *Hub) *Game {
 	return &Game{
 		Hub:              hub,
-		isGameInProgress: false,
+		IsGameInProgress: false,
 	}
 }
 
 func (g *Game) Run() {
 	fmt.Println("Running game...")
 	for {
-		//start game req
-		if g.IsStandingOnStart() {
-			g.StartGame()
-		}
-
 		data := g.CheckRoundStatus()
 
 		g.Hub.State <- State{
@@ -49,7 +46,11 @@ func (g *Game) Run() {
 	}
 }
 
-func (g *Game) StartGame() {
+func (g *Game) StartGame() error {
+	if g.IsGameInProgress {
+		return errors.New("Game is running")
+	}
+
 	fmt.Println("Starting game...")
 	square := Square{
 		Point: GetRandomCoordinate(),
@@ -59,7 +60,22 @@ func (g *Game) StartGame() {
 		Level:   1,
 		Squares: []Square{square},
 	}
-	g.isGameInProgress = true
+	g.IsGameInProgress = true
+	return nil
+}
+
+func (g *Game) EndGame() error {
+	if !g.IsGameInProgress {
+		return errors.New("Game is not running")
+	}
+
+	fmt.Println("Ending game...")
+	g.Round = Round{
+		Level:   0,
+		Squares: []Square{},
+	}
+	g.IsGameInProgress = false
+	return nil
 }
 
 func (g *Game) CheckRoundStatus() []PlayerState {
@@ -78,13 +94,11 @@ func (g *Game) CheckRoundStatus() []PlayerState {
 		}
 	}
 
-	fmt.Println(reqMet)
-	fmt.Println(g.Round.Squares)
-
 	if len(reqMet) == len(g.Round.Squares) && len(reqMet) > 0 {
 		g.Round.Level += 1
-		var tempS = []Square{}
-		for i := 0; i < g.Round.Level-1; i++ {
+		tempS := []Square{}
+		min := math.Min(float64(g.Round.Level-1), float64(len(data)))
+		for i := 0; i < int(min); i++ {
 			tempS = append(tempS, Square{
 				Point: GetRandomCoordinate(),
 				ID:    i + 1,
@@ -94,20 +108,6 @@ func (g *Game) CheckRoundStatus() []PlayerState {
 	}
 
 	return data
-}
-
-func (g *Game) IsStandingOnStart() bool {
-	if g.isGameInProgress {
-		return false
-	}
-	for _, p := range g.Hub.Players {
-		x := p.State.Point.X
-		y := p.State.Point.Y
-		if (x > -20 && x < 20) && (y > Boundaries["minY"] && y < Boundaries["minY"]+30) {
-			return true
-		}
-	}
-	return false
 }
 
 func IsPlayerInside(squareP point.Point, playerP point.Point) bool {

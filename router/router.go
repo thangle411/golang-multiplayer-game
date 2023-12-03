@@ -32,6 +32,8 @@ func Init(wsHandler *ws.Handler) {
 		})
 	})
 
+	r.POST("/startGame", wsHandler.StartGame)
+	r.POST("/endGame", wsHandler.EndGame)
 	r.GET("/ws/joinLobby", wsHandler.JoinLobby)
 	r.GET("/ws/joinGame/:gameID", wsHandler.JoinGame)
 }

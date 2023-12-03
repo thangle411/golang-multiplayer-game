@@ -9,7 +9,7 @@ import (
 func main() {
 	hub := game.NewHub()
 	game := game.NewGame(hub)
-	wsHandler := ws.NewHandler(hub)
+	wsHandler := ws.NewHandler(hub, game)
 	go hub.Run()
 	go game.Run()
 	router.Init(wsHandler)

@@ -1,3 +1,17 @@
+//Buttons
+const startBtn = document.getElementById('start-btn');
+const endBtn = document.getElementById('end-btn');
+startBtn.addEventListener('click', () => {
+  fetch('http://0.0.0.0:8080/startGame', {
+    method: 'POST',
+  });
+});
+endBtn.addEventListener('click', () => {
+  fetch('http://0.0.0.0:8080/endGame', {
+    method: 'POST',
+  });
+});
+
 //Websockets
 const lobbySocket = new WebSocket('ws://0.0.0.0:8080/ws/joinLobby');
 window.lobbySocket = lobbySocket;
