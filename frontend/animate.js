@@ -16,6 +16,7 @@ app.ticker.add(gameLoop);
 
 let globalPlayers = {};
 let globalSquares = {};
+let globalBots = {};
 
 window.EventBus.subscribe(window.EventBus.eventNames['sync'], data => {
   // this is syncing with states from server
@@ -27,13 +28,13 @@ window.EventBus.subscribe(window.EventBus.eventNames['sync'], data => {
     if (!globalPlayers[id]) {
       const player = new Graphics();
       player.beginFill(getRandomColor()).drawRect(center.x, center.y, 10, 10).endFill();
-      player.x = state.Point.x;
-      player.y = state.Point.y;
+      player.x = state.center.x;
+      player.y = state.center.y;
       app.stage.addChild(player);
       globalPlayers[id] = player;
     } else {
-      globalPlayers[id].position.x = (center.x / 400) * p.state.Point.x;
-      globalPlayers[id].position.y = (center.y / 400) * p.state.Point.y;
+      globalPlayers[id].position.x = (center.x / 400) * p.state.center.x;
+      globalPlayers[id].position.y = (center.y / 400) * p.state.center.y;
     }
   });
 });
@@ -45,14 +46,14 @@ window.EventBus.subscribe(window.EventBus.eventNames['removePlayer'], data => {
 
 function renderSquares(squares) {
   squares?.forEach(s => {
-    const { point, id } = s;
+    const { state, id } = s;
     const currentSquare = globalSquares[id];
-    if (!currentSquare || currentSquare?.x != point.x || currentSquare?.y != point.y) {
+    if (!currentSquare || currentSquare?.x != state.center.x || currentSquare?.y != state.center.y) {
       app.stage.removeChild(currentSquare);
       const square = new Graphics();
-      square.beginFill('#FFBF00').drawRect(center.x, center.y, 20, 20).endFill();
-      square.x = (center.x / 400) * point.x;
-      square.y = (center.y / 400) * point.y;
+      square.beginFill('#FFBF00').drawRect(center.x, center.y, state.width, state.height).endFill();
+      square.x = (center.x / 400) * state.center.x;
+      square.y = (center.y / 400) * state.center.y;
       globalSquares[id] = square;
       app.stage.addChildAt(square, 1);
     }
@@ -66,11 +67,33 @@ function removeSquares() {
   globalSquares = {};
 }
 
+function renderBots(bots) {
+  console.log(bots);
+  bots?.forEach(b => {
+    const { state, id } = b;
+    const currentBot = globalBots[id];
+    if (!currentBot || currentBot?.x != state.center.x || currentBot?.y != state.center.y) {
+      app.stage.removeChild(currentBot);
+      const square = new Graphics();
+      square.beginFill('#808080').drawRect(center.x, center.y, state.width, state.height).endFill();
+      square.x = (center.x / 400) * state.center.x;
+      square.y = (center.y / 400) * state.center.y;
+      globalBots[id] = square;
+      app.stage.addChildAt(square, 1);
+    }
+  });
+}
+
+function removeBots() {}
+
 function gameLoop() {
   if (window.Store.gameState.squares?.length > 0) {
-    renderSquares(window.Store.gameState.squares);
+    const { Store } = window;
+    renderSquares(Store.gameState.squares);
+    renderBots(Store.gameState.bots);
   } else {
     removeSquares();
+    removeBots();
   }
 
   Object.keys(globalPlayers).forEach(key => {

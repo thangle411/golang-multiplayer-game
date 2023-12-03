@@ -3,7 +3,8 @@ package game
 import (
 	"errors"
 	"fmt"
-	"math"
+	"server/game/bots"
+	"server/game/object"
 	"server/game/point"
 	"server/game/utils"
 	"time"
@@ -16,13 +17,14 @@ type Game struct {
 }
 
 type Square struct {
-	Point point.Point `json:"point"`
-	ID    int         `json:"id"`
+	SquareState object.ObjectState `json:"state"`
+	ID          int                `json:"id"`
 }
 
 type Round struct {
-	Level   int      `json:"level"`
-	Squares []Square `json:"squares"`
+	Level   int         `json:"level"`
+	Squares []Square    `json:"squares"`
+	Bots    []*bots.Bot `json:"bots"`
 }
 
 func NewGame(hub *Hub) *Game {
@@ -52,15 +54,9 @@ func (g *Game) StartGame() error {
 	}
 
 	fmt.Println("Starting game...")
-	square := Square{
-		Point: GetRandomCoordinate(),
-		ID:    1,
-	}
-	g.Round = Round{
-		Level:   1,
-		Squares: []Square{square},
-	}
 	g.IsGameInProgress = true
+	g.Round.Level = 1
+	g.createSquare(20)
 	return nil
 }
 
@@ -73,6 +69,7 @@ func (g *Game) EndGame() error {
 	g.Round = Round{
 		Level:   0,
 		Squares: []Square{},
+		Bots:    []*bots.Bot{},
 	}
 	g.IsGameInProgress = false
 	return nil
@@ -88,42 +85,53 @@ func (g *Game) CheckRoundStatus() []PlayerState {
 		})
 
 		for _, s := range g.Round.Squares {
-			if IsPlayerInside(s.Point, *player.State.Point) {
+			if s.SquareState.CollisionDetection(*player.State) {
 				reqMet = append(reqMet, true)
 			}
 		}
 	}
+	for _, b := range g.Round.Bots {
+		b.MoveRandomly()
+	}
 
+	//reset squares count
+	if len(g.Round.Squares) != len(data) {
+		g.createSquare(20)
+	}
+
+	//next level
 	if len(reqMet) == len(g.Round.Squares) && len(reqMet) > 0 {
 		g.Round.Level += 1
-		tempS := []Square{}
-		min := math.Min(float64(g.Round.Level-1), float64(len(data)))
-		for i := 0; i < int(min); i++ {
-			tempS = append(tempS, Square{
-				Point: GetRandomCoordinate(),
-				ID:    i + 1,
-			})
-		}
-		g.Round.Squares = tempS
+		g.createSquare(20)
+		g.AddBots(len(g.Hub.Players))
 	}
 
 	return data
 }
 
-func IsPlayerInside(squareP point.Point, playerP point.Point) bool {
-	minX := squareP.X - 20
-	maxX := squareP.X + 20
-	minY := squareP.Y - 20
-	maxY := squareP.Y + 20
-	if playerP.X >= minX && playerP.X <= maxX && playerP.Y >= minY && playerP.Y <= maxY {
-		return true
+func (g *Game) AddBots(num int) {
+	fmt.Println(num)
+	bArray := []*bots.Bot{}
+	for i := 0; i < num; i++ {
+		b := bots.NewBot(len(g.Round.Bots) + i)
+		bArray = append(bArray, b)
 	}
-	return false
+	g.Round.Bots = append(g.Round.Bots, bArray...)
 }
 
-func GetRandomCoordinate() point.Point {
-	return point.Point{
-		X: utils.RandomCoordinate(Boundaries["minX"], Boundaries["maxX"]),
-		Y: utils.RandomCoordinate(Boundaries["minY"], Boundaries["maxY"]),
+func (g *Game) createSquare(size int) {
+	if !g.IsGameInProgress {
+		return
 	}
+	tempS := []Square{}
+	for i := 0; i < len(g.Hub.Players); i++ {
+		square := Square{
+			SquareState: *object.NewObjectState(size, size, point.Point{X: 0, Y: 0}),
+			ID:          i + 1,
+		}
+		rPoint := utils.GetRandomCoordinate()
+		square.SquareState.UpdateState(rPoint.X, rPoint.Y)
+		tempS = append(tempS, square)
+	}
+	g.Round.Squares = tempS
 }

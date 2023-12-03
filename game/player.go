@@ -3,17 +3,12 @@ package game
 import (
 	"encoding/json"
 	"log"
+	"server/game/constants"
 	"server/game/object"
+	"server/game/point"
 
 	"github.com/gorilla/websocket"
 )
-
-var Boundaries = map[string]int{
-	"minX": -400,
-	"maxX": 400,
-	"minY": -400,
-	"maxY": 400,
-}
 
 type Input struct {
 	Key string `json:"key"`
@@ -44,7 +39,7 @@ func NewPlayer(id uint64, ws *websocket.Conn) *Player {
 		log.Fatal("ws cannot be nil")
 	}
 
-	return &Player{id, make(chan *Message, 5), make(chan State), ws, "", object.NewObjectState(), 0}
+	return &Player{id, make(chan *Message, 5), make(chan State), ws, "", object.NewObjectState(10, 10, point.Point{X: 0, Y: 0}), 0}
 }
 
 func (player *Player) ReadMessageFrom(hub *Hub) {
@@ -108,24 +103,24 @@ func (player *Player) WriteWorldStateTo() {
 func (player *Player) handleInput(input string) {
 	switch input {
 	case "arrow-down":
-		if player.State.Point.Y+1 > Boundaries["maxY"] {
+		if player.State.TopLeft.Y+5 > constants.Boundaries["maxY"] {
 			return
 		}
-		player.State.Point.Y = player.State.Point.Y + 3
+		player.State.UpdateState(0, 3)
 	case "arrow-up":
-		if player.State.Point.Y-1 < Boundaries["minY"] {
+		if player.State.BottomLeft.Y-5 < constants.Boundaries["minY"] {
 			return
 		}
-		player.State.Point.Y = player.State.Point.Y - 3
+		player.State.UpdateState(0, -3)
 	case "arrow-left":
-		if player.State.Point.X-1 < Boundaries["minX"] {
+		if player.State.BottomLeft.X-5 < constants.Boundaries["minX"] {
 			return
 		}
-		player.State.Point.X = player.State.Point.X - 3
+		player.State.UpdateState(-3, 0)
 	case "arrow-right":
-		if player.State.Point.X+1 > Boundaries["maxX"] {
+		if player.State.BottomRight.X+5 > constants.Boundaries["maxX"] {
 			return
 		}
-		player.State.Point.X = player.State.Point.X + 3
+		player.State.UpdateState(3, 0)
 	}
 }
