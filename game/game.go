@@ -6,6 +6,7 @@ import (
 	"server/game/bots"
 	"server/game/object"
 	"server/game/point"
+	"server/game/quadtree"
 	"server/game/utils"
 	"time"
 )
@@ -22,9 +23,10 @@ type Square struct {
 }
 
 type Round struct {
-	Level   int         `json:"level"`
-	Squares []Square    `json:"squares"`
-	Bots    []*bots.Bot `json:"bots"`
+	Level    int         `json:"level"`
+	Squares  []Square    `json:"squares"`
+	Bots     []*bots.Bot `json:"bots"`
+	QuadTree quadtree.QuadTree
 }
 
 func NewGame(hub *Hub) *Game {
@@ -38,7 +40,6 @@ func (g *Game) Run() {
 	fmt.Println("Running game...")
 	for {
 		data := g.CheckRoundStatus()
-
 		g.Hub.State <- State{
 			WorldState: data,
 			GameState:  g.Round,
@@ -90,8 +91,17 @@ func (g *Game) CheckRoundStatus() []PlayerState {
 			}
 		}
 	}
+
+	//implement quadtree for better optimizations here
 	for _, b := range g.Round.Bots {
 		b.MoveRandomly()
+
+		for _, player := range g.Hub.Players {
+			fmt.Println(player.State.CollisionDetection(*b.State))
+			if player.State.CollisionDetection(*b.State) {
+				player.State.UpdateState(b.Velocity.X*10, b.Velocity.Y*10)
+			}
+		}
 	}
 
 	//reset squares count
@@ -106,11 +116,16 @@ func (g *Game) CheckRoundStatus() []PlayerState {
 		g.AddBots(len(g.Hub.Players))
 	}
 
+	// quadTree := quadtree.NewQuadTree(4)
+	// for _, b := range g.Round.Bots {
+	// 	quadTree.Insert(b.State)
+	// }
+	// g.Round.QuadTree = *quadTree
+
 	return data
 }
 
 func (g *Game) AddBots(num int) {
-	fmt.Println(num)
 	bArray := []*bots.Bot{}
 	for i := 0; i < num; i++ {
 		b := bots.NewBot(len(g.Round.Bots) + i)
@@ -126,7 +141,7 @@ func (g *Game) createSquare(size int) {
 	tempS := []Square{}
 	for i := 0; i < len(g.Hub.Players); i++ {
 		square := Square{
-			SquareState: *object.NewObjectState(size, size, point.Point{X: 0, Y: 0}),
+			SquareState: *object.NewObjectState(size, size, *point.NewPoint(0, 0)),
 			ID:          i + 1,
 		}
 		rPoint := utils.GetRandomCoordinate()

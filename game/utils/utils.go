@@ -11,8 +11,8 @@ func RandomNum(min, max int) int {
 }
 
 func GetRandomCoordinate() *point.Point {
-	return &point.Point{
-		X: RandomNum(constants.Boundaries["minX"], constants.Boundaries["maxX"]),
-		Y: RandomNum(constants.Boundaries["minY"], constants.Boundaries["maxY"]),
-	}
+	return point.NewPoint(
+		RandomNum(constants.Boundaries["minX"], constants.Boundaries["maxX"]),
+		RandomNum(constants.Boundaries["minY"], constants.Boundaries["maxY"]),
+	)
 }

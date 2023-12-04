@@ -5,10 +5,10 @@ type Point struct {
 	Y int `json:"y"`
 }
 
-func NewPoint() *Point {
+func NewPoint(x int, y int) *Point {
 	return &Point{
-		X: 0,
-		Y: 0,
+		X: x,
+		Y: y,
 	}
 }
 

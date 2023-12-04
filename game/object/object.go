@@ -21,26 +21,26 @@ func NewObjectState(width int, height int, center point.Point) *ObjectState {
 		Rectangle: Rectangle{
 			Width:  width,
 			Height: height,
-			Center: &point.Point{
-				X: center.X,
-				Y: center.Y,
-			},
-			TopLeft: &point.Point{
-				X: -width/2 + center.X,
-				Y: -height/2 + center.Y,
-			},
-			TopRight: &point.Point{
-				X: width/2 + center.X,
-				Y: -height/2 + center.Y,
-			},
-			BottomRight: &point.Point{
-				X: width/2 + center.X,
-				Y: height/2 + center.Y,
-			},
-			BottomLeft: &point.Point{
-				X: -width/2 + center.X,
-				Y: height/2 + center.Y,
-			},
+			Center: point.NewPoint(
+				center.X,
+				center.Y,
+			),
+			TopLeft: point.NewPoint(
+				-width/2+center.X,
+				-height/2+center.Y,
+			),
+			TopRight: point.NewPoint(
+				width/2+center.X,
+				-height/2+center.Y,
+			),
+			BottomRight: point.NewPoint(
+				width/2+center.X,
+				height/2+center.Y,
+			),
+			BottomLeft: point.NewPoint(
+				-width/2+center.X,
+				height/2+center.Y,
+			),
 		},
 	}
 }
@@ -60,6 +60,28 @@ func (o *ObjectState) UpdateState(x int, y int) {
 
 	o.Center.X += x
 	o.Center.Y += y
+}
+
+func (o *ObjectState) Contains(otherObj ObjectState) bool {
+	//(centerX - w/2, centerY - h/2)																(centerX + w/2, centerY - h/2)
+	// |--------------------------------------------------------------------|
+	// |								 																										|
+	// |												centerX, centerY 														|
+	// |								 																										|
+	// |--------------------------------------------------------------------|
+	//(centerX - w/2, centerY + h/2)																(centerX + w/2, centerY + h/2)
+
+	centerX := o.Center.X
+	centerY := o.Center.Y
+	w := o.Width
+	h := o.Height
+
+	objectX := otherObj.Center.X
+	objectY := otherObj.Center.Y
+	if objectX > centerX-w/2 && objectX < centerX+w/2 && objectY > centerY-h/2 && objectY < centerY+h/2 {
+		return true
+	}
+	return false
 }
 
 func (o *ObjectState) CollisionDetection(otherObj ObjectState) bool {

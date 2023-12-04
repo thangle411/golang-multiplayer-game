@@ -39,7 +39,7 @@ func NewPlayer(id uint64, ws *websocket.Conn) *Player {
 		log.Fatal("ws cannot be nil")
 	}
 
-	return &Player{id, make(chan *Message, 5), make(chan State), ws, "", object.NewObjectState(10, 10, point.Point{X: 0, Y: 0}), 0}
+	return &Player{id, make(chan *Message, 5), make(chan State), ws, "", object.NewObjectState(10, 10, *point.NewPoint(0, 0)), 0}
 }
 
 func (player *Player) ReadMessageFrom(hub *Hub) {
